@@ -20,17 +20,17 @@ namespace CsUtil{
     }
     
     //--------------------------------------------------
-    template <class I>
-    std::vector<I> GetLocation(I i){
-      std::vector<I> location(shape.size());
+    //template <class I>
+    std::vector<int> GetLocation(int i){
+      std::vector<int> location(shape.size());
       for (CI a = 0; a < location.size(); ++a){
 	location[a] = (i%X[a])/X[a+1];
       }
       return location;
     }
-    template <class I>
-    int GetLocation(std::vector<I> index){
-      I location = 0;
+    //template <class I>
+    int GetLocation(std::vector<int> index){
+      int location = 0;
       for (CI i = 0; i < index.size(); ++i){
 	location += index[i]*X[i+1];
       }
@@ -38,12 +38,12 @@ namespace CsUtil{
     }
     
     //--------------------------------------------------
-    template <class I>
-    bool InRange(I location, std::vector< std::vector<I> > indices){
+    //template <class I>
+    bool InRange(int location, std::vector< std::vector<int> > indices){
       return InRange(GetLocation(location), indices);
     }
-    template <class I>
-    bool InRange(std::vector<I> location, std::vector< std::vector<I> > indices){
+    //template <class I>
+    bool InRange(std::vector<int> location, std::vector< std::vector<int> > indices){
       for (CI i = 0; i < location.size(); ++i){
 	if (location[i] < indices[i][0] || location[i] > indices[i][1]){return false;}
       }
@@ -51,23 +51,25 @@ namespace CsUtil{
     }
     
     //--------------------------------------------------
-    template <class I, class S>
-    std::vector<I> Permute(std::vector<I> index, S step){
-      std::vector<I> newindex(index.size());
+    //template <class I, class S>
+    std::vector<int> Permute(std::vector<int> index, int step){
+      std::vector<int> newindex(index.size());
       for (CI i = 0; i < index.size(); ++i){
 	newindex[(i+step)%index.size()] = index[i];
       }
       return newindex;
     }
-    template <class I, class S>
-    int Permute(I index, S step){
+    //template <class I, class S>
+    int Permute(int index, int step){
       return GetLocation(Permute(GetLocation(index), step));
     }
     
   public:
     //--------------------------------------------------
-    template <class I>
-    array(std::vector<I> D){
+    array(){}//shape.resize(1);shape[0] = 1;FillX();origin = new CT[X[0]];
+    
+    ////template <class I>
+    array(std::vector<int> D){
       shape.resize(D.size());
       shape.assign(D.begin(), D.end());
       FillX();
@@ -77,12 +79,12 @@ namespace CsUtil{
     ~array(){delete[] origin;}
     
     //--------------------------------------------------
-    template <class I>
-    CT GetElement(std::vector<I> index){
+    //template <class I>
+    CT GetElement(std::vector<int> index){
       return *(origin + GetLocation(index));
     }
-    template <class I>
-    CT GetElement(I index){
+    //template <class I>
+    CT GetElement(int index){
       return *(origin + index);
     }
     
@@ -120,14 +122,14 @@ namespace CsUtil{
     }
     
     //--------------------------------------------------
-    template <class I>
-    CI Size(I dimension = 0){
+    //template <class I>
+    CI Size(int dimension = 0){
       return X[dimension];
     }
 
     //--------------------------------------------------
-    template <class I>
-    std::vector< std::vector<CT*> > Axis(I dimension){
+    //template <class I>
+    std::vector< std::vector<CT*> > Axis(int dimension){
       std::vector< std::vector<CT*> > axis(X[0]/X[dimension]);
       for (CI i = 0; i < axis.size(); ++i){
 	axis[i].resize(2);
@@ -139,8 +141,8 @@ namespace CsUtil{
     
     //--------------------------------------------------
     CT* Begin(){return origin;}
-    template <class I>
-    std::vector<CT*> Begin(I dimension){
+    //template <class I>
+    std::vector<CT*> Begin(int dimension){
       std::vector<CT*> beginnings(X[0]/X[dimension]);
       for (CI i = 0; i < beginnings.size(); ++i){
 	beginnings[i] = origin+i*X[dimension];
@@ -150,8 +152,8 @@ namespace CsUtil{
     
     //--------------------------------------------------
     CT* End(){return origin+X[0]-1;}
-    template <class I>
-    std::vector<CT*> End(I dimension){
+    //template <class I>
+    std::vector<CT*> End(int dimension){
       std::vector<CT*> endings(X[0]/X[dimension]);
       for (CI i = 0; i < endings.size(); ++i){
 	endings[i] = origin+(i+1)*X[dimension] - 1;
@@ -161,32 +163,32 @@ namespace CsUtil{
     
     //--------------------------------------------------
     void Assign(CT* selfstartat, CT* databegin, CT* dataend){
-      for (CI i = 0; i <= end-begin; ++i){
-	*(selfstartat+i) = *(begin + i);
+      for (CI i = 0; i <= dataend-databegin; ++i){
+	*(selfstartat+i) = *(databegin + i);
       }
     }
     void Assign(int selfstartatindex, CT* databegin, CT* dataend){
-      for (CI i = 0; i <= end-begin; ++i){
-	*(origin+selfstartatindex+i) = *(begin + i);
+      for (CI i = 0; i <= dataend-databegin; ++i){
+	*(origin+selfstartatindex+i) = *(databegin + i);
       }
     }
-    void Assign(CT* begin, CT* end){
-      for (CI i = 0; i <= end-begin; ++i){
-	*(origin+i) = *(begin + i);
+    void Assign(CT* databegin, CT* dataend){
+      for (CI i = 0; i <= dataend-databegin; ++i){
+	*(origin+i) = *(databegin + i);
       }
     }
-    template <class I>
-    void Assign(std::vector<I> index, CT value){
+    //template <class I>
+    void Assign(std::vector<int> index, CT value){
       *(origin + GetLocation(index)) = value;
     }
-    template <class I>
-    void Assign(I index, CT value){
+    //template <class I>
+    void Assign(int index, CT value){
       *(origin + index) = value;
     }
     
     //--------------------------------------------------
-    template <class I>
-    array<CT,CI> Transpose(I step = 1){
+    //template <class I>
+    array<CT,CI> Transpose(int step = 1){
       array<CT,CI> newarray(Permute(shape, step));
       for (CI i = 0; i < X[0]; ++i){
 	newarray.Assign(Permute(i,step), GetElement(i));
@@ -201,14 +203,14 @@ namespace CsUtil{
     }
 
     //fixme, look at tensor contraction
-    template <class OCT, class OCI>
-    array<CT,CI> TensorContract(array<OCT,OCI> operand){
+    //template <class OCT, class OCI>
+    array<CT,CI> TensorContract(array<CT,CI> operand){
       return *this;
     }
     //--------------------------------------------------
     //--------------------------------------------------
-    template <class OCT, class OCI>
-    array<CT,CI> operator*(array<OCT,OCI> operand){
+    //template <class OCT, class OCI>
+    array<CT,CI> operator*(array<CT,CI> operand){
       array<CT,CI> product(shape);
       
       CT* selfbegin = Begin(), *operandbegin = operand.Begin(), *productbegin = product.Begin();
@@ -217,8 +219,8 @@ namespace CsUtil{
       }
       return product;
     }
-    template <class T>
-    array<CT,CI> operator*(T operand){
+    //template <class T>
+    array<CT,CI> operator*(CT operand){
       array<CT,CI> product(shape);
       
       CT* selfbegin = Begin(), *productbegin = product.Begin();
@@ -229,8 +231,8 @@ namespace CsUtil{
     }
     
     //--------------------------------------------------
-    template <class OCT, class OCI>
-    array<CT,CI> operator+(array<OCT,OCI> operand){
+    //template <class OCT, class OCI>
+    array<CT,CI> operator+(array<CT,CI> operand){
       array<CT,CI> addition(shape);
       
       CT* selfbegin = Begin(), *operandbegin = operand.Begin(), *additionbegin = addition.Begin();
@@ -239,8 +241,8 @@ namespace CsUtil{
       }
       return addition;
     }
-    template <class T>
-    array<CT,CI> operator+(T operand){
+    //template <class T>
+    array<CT,CI> operator+(CT operand){
       array<CT,CI> addition(shape);
       
       CT* selfbegin = Begin(), *additionbegin = addition.Begin();
@@ -251,8 +253,8 @@ namespace CsUtil{
     }
     
     //--------------------------------------------------
-    template <class OCT, class OCI>
-    array<CT,CI> operator-(array<OCT,OCI> operand){
+    //template <class OCT, class OCI>
+    array<CT,CI> operator-(array<CT,CI> operand){
       array<CT,CI> difference(shape);
       
       CT* selfbegin = Begin(), *operandbegin = operand.Begin(), *differencebegin = difference.Begin();
@@ -261,8 +263,8 @@ namespace CsUtil{
       }
       return difference;
     }
-    template <class T>
-    array<CT,CI> operator-(T operand){
+    //template <class T>
+    array<CT,CI> operator-(CT operand){
       array<CT,CI> difference(shape);
       
       CT* selfbegin = Begin(), *differencebegin = difference.Begin();
@@ -273,8 +275,8 @@ namespace CsUtil{
     }
     
     //--------------------------------------------------
-    template <class OCT, class OCI>
-    array<CT,CI> operator/(array<OCT,OCI> operand){
+    //template <class OCT, class OCI>
+    array<CT,CI> operator/(array<CT,CI> operand){
       array<CT,CI> quotient(shape);
       
       CT* selfbegin = Begin(), *operandbegin = operand.Begin(), *quotientbegin = quotient.Begin();
@@ -283,8 +285,8 @@ namespace CsUtil{
       }
       return quotient;
     }
-    template <class T>
-    array<CT,CI> operator/(T operand){
+    //template <class T>
+    array<CT,CI> operator/(CT operand){
       array<CT,CI> quotient(shape);
       
       CT* selfbegin = Begin(), *quotientbegin = quotient.Begin();
@@ -296,8 +298,8 @@ namespace CsUtil{
     
     //--------------------------------------------------
     //--------------------------------------------------
-    template <class OCT, class OCI>
-    void operator*=(array<OCT,OCI> operand){
+    //template <class OCT, class OCI>
+    void operator*=(array<CT,CI> operand){
       CT* selfbegin = Begin(), *operandbegin = operand.Begin();
       for (CI i = 0; i < X[0]; ++i){
 	*(selfbegin + i) = (*(selfbegin + i))*(*(operandbegin+i));
@@ -312,15 +314,15 @@ namespace CsUtil{
     }
     
     //--------------------------------------------------
-    template <class OCT, class OCI>
-    void operator+=(array<OCT,OCI> operand){
+    //template <class OCT, class OCI>
+    void operator+=(array<CT,CI> operand){
       CT* selfbegin = Begin(), *operandbegin = operand.Begin();
       for (CI i = 0; i < X[0]; ++i){
 	*(selfbegin + i) = (*(selfbegin + i))+(*(operandbegin+i));
       }
     }
-    template <class T>
-    void operator+=(T operand){
+    //template <class T>
+    void operator+=(CT operand){
       CT* selfbegin = Begin();
       for (CI i = 0; i < X[0]; ++i){
 	*(selfbegin + i) = (*(selfbegin + i))+operand;
@@ -328,15 +330,15 @@ namespace CsUtil{
     }
     
     //--------------------------------------------------
-    template <class OCT, class OCI>
-    void operator-=(array<OCT,OCI> operand){
+    //template <class OCT, class OCI>
+    void operator-=(array<CT,CI> operand){
       CT* selfbegin = Begin(), *operandbegin = operand.Begin();
       for (CI i = 0; i < X[0]; ++i){
 	*(selfbegin + i) = (*(selfbegin + i))-(*(operandbegin+i));
       }
     }
-    template <class T>
-    void operator-=(T operand){
+    //template <class T>
+    void operator-=(CT operand){
       CT* selfbegin = Begin();
       for (CI i = 0; i < X[0]; ++i){
 	*(selfbegin + i) = (*(selfbegin + i))-operand;
@@ -344,15 +346,15 @@ namespace CsUtil{
     }
     
     //--------------------------------------------------
-    template <class OCT, class OCI>
-    void operator/=(array<OCT,OCI> operand){
+    //template <class OCT, class OCI>
+    void operator/=(array<CT,CI> operand){
       CT* selfbegin = Begin(), *operandbegin = operand.Begin();
       for (CI i = 0; i < X[0]; ++i){
 	*(selfbegin + i) = (*(selfbegin + i))/(*(operandbegin+i));
       }
     }
-    template <class T>
-    void operator/=(T operand){
+    //template <class T>
+    void operator/=(CT operand){
       CT* selfbegin = Begin();
       for (CI i = 0; i < X[0]; ++i){
 	*(selfbegin + i) = (*(selfbegin + i))/operand;
@@ -361,8 +363,8 @@ namespace CsUtil{
 
     //--------------------------------------------------
     //--------------------------------------------------
-    template <class I>
-    array<CT,CI> operator[](I index){
+    //template <class I>
+    array<CT,CI> operator[](int index){
       std::vector<CI> newshape(shape.size()-1);
       newshape.assign(shape.begin()+1,shape.end());
       array<CT,CI> newarray(newshape);
