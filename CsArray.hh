@@ -1,3 +1,6 @@
+#ifndef __CS_ARRAY__
+#define __CS_ARRAY__
+
 #include <stdarg.h>
 #include <vector>
 #include <iostream>
@@ -11,14 +14,11 @@ class array {
   //The lengths in memory of each dimension. offsets[0] is the length of the whole array, offsets[1] is the length along the first dimension,...,offsets[n+1] is always 1 (to represent the length of one data object) 
   std::vector<CI> offsets;
 
+  //Will not print an array if it is longer than this value
+  static const CI printlimit = 150;
+  
   //Given the requested dimensions, it fills the shape and offsets objects, also creates the array in memory and assigns it to the origin
   void InitializeSelf(std::vector<CI> D);
-
-  //Given an index along the memory, it returns a vector which has the distances along each dimension
-  std::vector<CI> GetIndex(CI index);
-
-  //Given the distances along each dimension, this will return the true index of the desired data point
-  CI GetIndex(std::vector<CI> index);
 
   //bool InRange(CI location, std::vector< std::vector<CI> > indices);
   
@@ -34,7 +34,7 @@ class array {
   std::vector<CI> GeneratePermuteMap(CI nindices, CI step);
 
   //Recursively applies the calculations needed for n dimensional inner product
-  CT RecursiveInnerProduct(array<CT,CI>* operand, std::vector<CI> THISINDEX, std::vector<CI> OPERANDINDEX, CI ndimensions);
+  CT RecursiveInnerProduct(array<CT,CI>* operand, std::vector<CI> THISINDEX, std::vector<CI> OPERANDINDEX, CI ndimensions) const ;
     
 public:
 
@@ -50,38 +50,53 @@ public:
   //Destructor, will call delete on origin
   ~array();
 
+  //Given an index along the memory, it returns a vector which has the distances along each dimension
+  std::vector<CI> GetIndex(CI index) const ;
+
+  //Given the distances along each dimension, this will return the true index of the desired data point
+  CI GetIndex(std::vector<CI> index) const ;
+
   //Returns the value at an index location
-  CT* GetValue(std::vector<CI> index);
+  CT* GetValueP(std::vector<CI> index) const ;
 
   //Returns the value at the index
-  CT* GetValue(CI index);
+  CT* GetValueP(CI index) const ;
+
+  //Returns the value at an index location
+  CT GetValue(std::vector<CI> index) const ;
+
+  //Returns the value at the index
+  CT GetValue(CI index) const ;
 
   //Returns the size of the array along the given dimension. note1: size(0) gives the size of the whole array in memory, note2: size(n) is always 1
-  CI Size(CI dimension = 0);
+  const CI Size(CI dimension = 0) const ;
 
   //Returns the vector of values describing how long each dimension is
-  std::vector<CI> Shape();
+  const std::vector<CI> Shape() const ;
 
   //Returns the length of one of the dimensions, as specified
-  CI Shape(CI dimension);
+  const CI Shape(CI dimension) const ;
 
   //Returns the beginning and end pointer for each segment of the array according to the dimension requested 
-  std::vector< std::vector<CT*> > Axis(CI dimension);
+  std::vector< std::vector<CT*> > Axis(CI dimension) const ;
 
   //Returns a pointer to the beginning of the array
-  CT* Begin();
+  CT* Begin() const ;
 
   //Returns a vector of pointers to the beginning of each segment on a specified dimension
-  std::vector<CT*> Begin(CI dimension);
+  std::vector<CT*> Begin(CI dimension) const ;
 
   //Returns a pointer to the end of the array
-  CT* End();
+  CT* End() const ;
 
   //Returns a vector of pointers to the end of each segment on a specified dimension
-  std::vector<CT*> End(CI dimension);
+  std::vector<CT*> End(CI dimension) const ;
 
   //Assign the values between the given begin/end pointers starting at memory index: origin + selfstartatindex
-  void Assign(CI selfstartatindex, CT* databegin, CT* dataend);
+  //void Assign(CI selfstartatindex, CT* databegin, CT* dataend);
+
+  //Assign all the values from a vector
+  void Assign(std::vector<CT> values);
 
   //Assign the values at the pointed to locations to the array
   void Assign(CT* databegin, CT* dataend);
@@ -93,54 +108,54 @@ public:
   void Assign(CI index, CT value);
 
   //Assign the given value to every element in the array
-  void Assign(CT value);
+  void AssignAll(CT value);
 
   //Assign a list of values to the array, the first argument is the number of values to assign
-  //  void Assign(CI n, ...);
+  void ManualAssign(CI n, ...);
 
   //Returns a new array which is the transpose of the old one by a given number of steps (if you are using matrices, the default is what you want)
-  array<CT,CI>* Transpose(CI step = 1);
+  array<CT,CI>* Transpose(CI step = 1) const ;
 
-  //string Print();
+  void Print() const ;
 
   //Computes the inner product of two arrays, for matrices this is known as matrix multiplication, it scales to n dimensions 
-  array<CT,CI>* InnerProduct(array<CT,CI>* operand, CI ncontractionindices = 1);
+  array<CT,CI>* InnerProduct(array<CT,CI>* operand, CI ncontractionindices = 1) const ;
 
   //array<CT,CI> TensorProduct(array<CT,CI> operand);//future
   
-  array<CT,CI>* operator*(array<CT,CI>* operand);
+  array<CT,CI>* operator*(array<CT,CI>* operand) const ;
 
-  array<CT,CI>* operator*(CT operand);
+  array<CT,CI>* operator*(CT operand) const ;
   
   void operator*=(array<CT,CI>* operand);
   
   void operator*=(CT operand);
 
-  array<CT,CI>* operator+(array<CT,CI>* operand);
+  array<CT,CI>* operator+(array<CT,CI>* operand) const ;
 
-  array<CT,CI>* operator+(CT operand);
+  array<CT,CI>* operator+(CT operand) const ;
 
   void operator+=(array<CT,CI>* operand);
 
   void operator+=(CT operand);
 
-  array<CT,CI>* operator-(array<CT,CI>* operand);
+  array<CT,CI>* operator-(array<CT,CI>* operand) const ;
 
-  array<CT,CI>* operator-(CT operand);
+  array<CT,CI>* operator-(CT operand) const ;
 
   void operator-=(array<CT,CI>* operand);
 
   void operator-=(CT operand);
 
-  array<CT,CI>* operator/(array<CT,CI>* operand);
+  array<CT,CI>* operator/(array<CT,CI>* operand) const ;
 
-  array<CT,CI>* operator/(CT operand);
+  array<CT,CI>* operator/(CT operand) const ;
 
   void operator/=(array<CT,CI>* operand);
 
   void operator/=(CT operand);
 
-  array<CT,CI>* operator[](CI index);
+  array<CT,CI>* operator[](CI index) const ;
 
 };
 
@@ -161,7 +176,7 @@ void array<CT, CI>::InitializeSelf(std::vector<CI> D){
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-std::vector<CI> array<CT, CI>::GetIndex(CI index){
+std::vector<CI> array<CT, CI>::GetIndex(CI index) const {
   std::vector<CI> newindex(shape.size());
   for (CI i = 0; i < newindex.size(); ++i){
     newindex[i] = (index%offsets[i])/offsets[i+1];
@@ -171,7 +186,7 @@ std::vector<CI> array<CT, CI>::GetIndex(CI index){
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-CI array<CT, CI>::GetIndex(std::vector<CI> index){
+CI array<CT, CI>::GetIndex(std::vector<CI> index) const {
   CI newindex = 0;
   for (CI i = 0; i < index.size(); ++i){
     newindex += index[i]*offsets[i+1];
@@ -251,37 +266,49 @@ array<CT, CI>::~array(){delete[] origin;}
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-CT* array<CT, CI>::GetValue(std::vector<CI> index){
+CT* array<CT, CI>::GetValueP(std::vector<CI> index) const {
   return (origin + GetIndex(index));
 }
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-CT* array<CT, CI>::GetValue(CI index){
+CT* array<CT, CI>::GetValueP(CI index) const {
   return (origin + index);
 }
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-CI array<CT, CI>::Size(CI dimension){
+CT array<CT, CI>::GetValue(std::vector<CI> index) const {
+  return *(origin + GetIndex(index));
+}
+
+//-----------------------------------------------------------------------------
+template <class CT, class CI>
+CT array<CT, CI>::GetValue(CI index) const {
+  return *(origin + index);
+}
+
+//-----------------------------------------------------------------------------
+template <class CT, class CI>
+const CI array<CT, CI>::Size(CI dimension) const {
   return offsets[dimension];
 }
   
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-std::vector<CI> array<CT, CI>::Shape(){
+const std::vector<CI> array<CT, CI>::Shape() const {
   return shape;
 }
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-CI array<CT, CI>::Shape(CI dimension){
+const CI array<CT, CI>::Shape(CI dimension) const {
   return shape[dimension];
 }
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-std::vector< std::vector<CT*> > array<CT, CI>::Axis(CI dimension){
+std::vector< std::vector<CT*> > array<CT, CI>::Axis(CI dimension) const {
   std::vector< std::vector<CT*> > axis(offsets[0]/offsets[dimension]);
   for (CI i = 0; i < axis.size(); ++i){
     axis[i].resize(2);
@@ -293,11 +320,11 @@ std::vector< std::vector<CT*> > array<CT, CI>::Axis(CI dimension){
     
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-CT* array<CT, CI>::Begin(){return origin;}
+CT* array<CT, CI>::Begin() const {return origin;}
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-std::vector<CT*> array<CT, CI>::Begin(CI dimension){
+std::vector<CT*> array<CT, CI>::Begin(CI dimension) const {
   std::vector<CT*> beginnings(offsets[0]/offsets[dimension]);
   for (CI i = 0; i < beginnings.size(); ++i){
     beginnings[i] = origin+i*offsets[dimension];
@@ -308,17 +335,18 @@ std::vector<CT*> array<CT, CI>::Begin(CI dimension){
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-CT* array<CT, CI>::End(){return origin+offsets[0]-1;}
+CT* array<CT, CI>::End() const {return origin+offsets[0]-1;}
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-std::vector<CT*> array<CT, CI>::End(CI dimension){
+std::vector<CT*> array<CT, CI>::End(CI dimension) const {
   std::vector<CT*> endings(offsets[0]/offsets[dimension]);
   for (CI i = 0; i < endings.size(); ++i){
     endings[i] = origin+(i+1)*offsets[dimension] - 1;
   }
   return endings;
-}    
+}
+/**
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
 void array<CT, CI>::Assign(CI selfstartatindex, CT* databegin, CT* dataend){
@@ -326,39 +354,46 @@ void array<CT, CI>::Assign(CI selfstartatindex, CT* databegin, CT* dataend){
     *(origin+selfstartatindex+i) = *(databegin + i);
   }
 }
+*/
+
+//-----------------------------------------------------------------------------
+template <class CT, class CI>
+void array<CT, CI>::Assign(std::vector<CT> values){
+  for (CI i = 0; i < values.size(); ++i){
+    *(origin+i) = values[i];
+  }
+}
+
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
 void array<CT, CI>::Assign(CT* databegin, CT* dataend){
-  std::cout << "got it wrong, using pointers for both" << std::endl;
-  for (CI i = 0; i <= dataend-databegin; ++i){
+  for (CI i = 0; i < dataend-databegin+1; ++i){
     *(origin+i) = *(databegin + i);
   }
 }
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
 void array<CT, CI>::Assign(std::vector<CI> index, CT value){
-  std::cout << "um wtf?" << std::endl;
   *(origin + GetIndex(index)) = value;
 }
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
 void array<CT, CI>::Assign(CI index, CT value){
-  std::cout << " assigning value: " << value << std::endl;
   *(origin + index) = value;
 }
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-void array<CT, CI>::Assign(CT value){
+void array<CT, CI>::AssignAll(CT value){
   for (CI i = 0; i < offsets[0]; ++i){
     *(origin + i) = value;
   }
 }
 
-/**
+
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-void array<CT, CI>::Assign(CI n, ...){
+void array<CT, CI>::ManualAssign(CI n, ...){
   va_list values;
   va_start(values, n);
   for (CI i = 0; i < n; ++i){
@@ -366,30 +401,41 @@ void array<CT, CI>::Assign(CI n, ...){
   }
   va_end(values);
 }
-*/
+
     
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-array<CT,CI>* array<CT, CI>::Transpose(CI step){
+array<CT,CI>* array<CT, CI>::Transpose(CI step) const {
   array<CT,CI>* newarray = new array<CT,CI>(Permute(shape, step));
   for (CI i = 0; i < offsets[0]; ++i){
-    newarray->Assign(Permute(i,step), *GetValue(i));
+    newarray->Assign(Permute(i,step), GetValue(i));
   }
   return newarray;
 }
 
 //-----------------------------------------------------------------------------
-/**
+
 template <class CT, class CI>
-std::string array<CT, CI>::Print(){
-  std::string out = "";
-  return out;
+void array<CT, CI>::Print() const {
+  if (offsets[0] > printlimit){std::cout<<"array too long: " << offsets[0] << " elements" << std::endl; return;}
+  
+  bool comma = true;
+  for (CI i = 0; i < offsets[0]; ++i){
+    comma = true;
+    for (CI dim = 0; dim < offsets.size()-1; ++dim){
+      if (i%offsets[dim] == 0){std::cout << "|";comma = false;}
+    }
+    if (i != 0 && comma){std::cout << ", ";}
+    std::cout << GetValue(i);
+  }
+  for (CI dim = 0; dim < offsets.size()-1; ++dim){std::cout << "|";}
+  std::cout<<std::endl;
 }
-*/
+
 //-----------------------------------------------------------------------------
 
 template <class CT, class CI>
-array<CT,CI>* array<CT, CI>::InnerProduct(array<CT,CI>* operand, CI ndimensions){
+array<CT,CI>* array<CT, CI>::InnerProduct(array<CT,CI>* operand, CI ndimensions) const {
   std::vector<CI> newshape(shape.size() + operand->Shape().size() - 2*ndimensions), operandshape;
   operandshape = operand->Shape();
 
@@ -408,26 +454,26 @@ array<CT,CI>* array<CT, CI>::InnerProduct(array<CT,CI>* operand, CI ndimensions)
   }
   array<CT,CI>* newarray = new array<CT,CI>(newshape);
 
-  std::vector<CI> NEWINDEX(newshape.size()), THISINDEX(shape.size()), OPERANDINDEX(operandshape.size());
+  std::vector<CI> newindex(newshape.size()), thisindex(shape.size()), operandindex(operandshape.size());
   
   for (CI index = 0; index < newarray->Size(); ++index){
-    NEWINDEX = newarray->GetIndex(index);
-    for (CI i = 0; i < shape.size()-ndimensions; ++i){THISINDEX[i] = NEWINDEX[i];}
-    for (CI i = 0; i < operandshape.size() - ndimensions; ++i){OPERANDINDEX[ndimensions+i] = NEWINDEX[NEWINDEX.size()-operandshape.size() + ndimensions+i];}
-    newarray->Assign(index, RecursiveInnerProduct(operand, THISINDEX, OPERANDINDEX, ndimensions));
+    newindex = newarray->GetIndex(index);
+    for (CI i = 0; i < shape.size()-ndimensions; ++i){thisindex[i] = newindex[i];}
+    for (CI i = 0; i < operandshape.size() - ndimensions; ++i){operandindex[ndimensions+i] = newindex[newindex.size()-operandshape.size() + ndimensions+i];}
+    newarray->Assign(index, RecursiveInnerProduct(operand, thisindex, operandindex, ndimensions));
   }
 
   return newarray;
 }
 
 template <class CT, class CI>
-CT array<CT, CI>::RecursiveInnerProduct(array<CT,CI>* operand, std::vector<CI> THISINDEX, std::vector<CI> OPERANDINDEX, CI ndimensions){
+CT array<CT, CI>::RecursiveInnerProduct(array<CT,CI>* operand, std::vector<CI> thisindex, std::vector<CI> operandindex, CI ndimensions) const {
   CT newvalue = 0;
   if (ndimensions == 1){
-    CI lastnumber = THISINDEX.size()-1;
-    THISINDEX[lastnumber] = 0;
-    OPERANDINDEX[0] = 0;
-    CT* thisbegin = GetValue(THISINDEX), *operandbegin = GetValue(OPERANDINDEX);
+    CI lastnumber = thisindex.size()-1;
+    thisindex[lastnumber] = 0;
+    operandindex[0] = 0;
+    CT* thisbegin = GetValueP(thisindex), *operandbegin = operand->GetValueP(operandindex);
     CI operandstep = operand->Size(1);
     for (CI index = 0; index < shape[lastnumber]; ++index){
       newvalue += (*(thisbegin + index))*(*(operandbegin + index*operandstep));
@@ -435,9 +481,9 @@ CT array<CT, CI>::RecursiveInnerProduct(array<CT,CI>* operand, std::vector<CI> T
   }else{
     CI intermediatedimension = shape[shape.size()-ndimensions];
     for (CI index = 0; index < intermediatedimension; ++index){
-      THISINDEX[THISINDEX.size()-ndimensions] = index;
-      OPERANDINDEX[ndimensions-1] = index;
-      newvalue += RecursiveInnerProduct(operand, THISINDEX, OPERANDINDEX, ndimensions-1);
+      thisindex[thisindex.size()-ndimensions] = index;
+      operandindex[ndimensions-1] = index;
+      newvalue += RecursiveInnerProduct(operand, thisindex, operandindex, ndimensions-1);
     }
   }
   return newvalue;
@@ -445,7 +491,7 @@ CT array<CT, CI>::RecursiveInnerProduct(array<CT,CI>* operand, std::vector<CI> T
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-array<CT,CI>* array<CT, CI>::operator*(array<CT,CI>* operand){
+array<CT,CI>* array<CT, CI>::operator*(array<CT,CI>* operand) const {
   array<CT,CI>* result = new array(shape);
       
   CT* selfbegin = Begin(), *operandbegin = operand->Begin(), *resultbegin = result->Begin();
@@ -457,7 +503,7 @@ array<CT,CI>* array<CT, CI>::operator*(array<CT,CI>* operand){
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-array<CT,CI>* array<CT, CI>::operator*(CT operand){
+array<CT,CI>* array<CT, CI>::operator*(CT operand) const {
   array<CT,CI>* result = new array(shape);
       
   CT* selfbegin = Begin(), *resultbegin = result->Begin();
@@ -469,7 +515,7 @@ array<CT,CI>* array<CT, CI>::operator*(CT operand){
     
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-array<CT,CI>* array<CT, CI>::operator+(array<CT,CI>* operand){
+array<CT,CI>* array<CT, CI>::operator+(array<CT,CI>* operand) const {
   array<CT,CI>* result = new array(shape);
       
   CT* selfbegin = Begin(), *operandbegin = operand->Begin(), *resultbegin = result->Begin();
@@ -481,7 +527,7 @@ array<CT,CI>* array<CT, CI>::operator+(array<CT,CI>* operand){
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-array<CT,CI>* array<CT, CI>::operator+(CT operand){
+array<CT,CI>* array<CT, CI>::operator+(CT operand) const {
   array<CT,CI>* result = new array(shape);
       
   CT* selfbegin = Begin(), *resultbegin = result->Begin();
@@ -493,7 +539,7 @@ array<CT,CI>* array<CT, CI>::operator+(CT operand){
     
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-array<CT,CI>* array<CT, CI>::operator-(array<CT,CI>* operand){
+array<CT,CI>* array<CT, CI>::operator-(array<CT,CI>* operand) const {
   array<CT,CI>* result = new array(shape);
       
   CT* selfbegin = Begin(), *operandbegin = operand->Begin(), *resultbegin = result->Begin();
@@ -505,7 +551,7 @@ array<CT,CI>* array<CT, CI>::operator-(array<CT,CI>* operand){
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-array<CT,CI>* array<CT, CI>::operator-(CT operand){
+array<CT,CI>* array<CT, CI>::operator-(CT operand) const {
   array<CT,CI>* result = new array(shape);
       
   CT* selfbegin = Begin(), *resultbegin = result->Begin();
@@ -517,7 +563,7 @@ array<CT,CI>* array<CT, CI>::operator-(CT operand){
     
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-array<CT,CI>* array<CT, CI>::operator/(array<CT,CI>* operand){
+array<CT,CI>* array<CT, CI>::operator/(array<CT,CI>* operand) const {
   array<CT,CI>* result = new array(shape);
       
   CT* selfbegin = Begin(), *operandbegin = operand->Begin(), *resultbegin = result->Begin();
@@ -529,7 +575,7 @@ array<CT,CI>* array<CT, CI>::operator/(array<CT,CI>* operand){
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-array<CT,CI>* array<CT, CI>::operator/(CT operand){
+array<CT,CI>* array<CT, CI>::operator/(CT operand) const {
   array<CT,CI>* result = new array(shape);
       
   CT* selfbegin = Begin(), *resultbegin = result->Begin();
@@ -613,7 +659,7 @@ void array<CT, CI>::operator/=(CT operand){
 
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
-array<CT,CI>* array<CT, CI>::operator[](CI index){
+array<CT,CI>* array<CT, CI>::operator[](CI index) const {
   std::vector<CI> newshape;
   if (shape.size() > 1){
     newshape.resize(shape.size()-1);
@@ -626,3 +672,4 @@ array<CT,CI>* array<CT, CI>::operator[](CI index){
   return newarray;
 }
 
+#endif
