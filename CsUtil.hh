@@ -1,9 +1,10 @@
 
-//#include <iostream>
+#include <iostream>
 #include <vector>
 #include <math.h>
 #include "CsArray.hh"
-//#include <cstdarg.h>
+#include <stdexcept>
+
 
 namespace CsUtil{
   namespace{}
@@ -30,7 +31,7 @@ namespace CsUtil{
   template <class T> std::vector< T > Series(const T& start, const T& end, const T& increment);
 
   template <class CT, class CI> array<CT,CI>* InnerProduct(const array<CT,CI>& leftarray, const array<CT,CI>& rightarray, CI ndimensions = 1);
-  namespace{template <class CT, class CI> CT RecursiveInnerProduct(const array<CT,CI>* leftarray, const array<CT,CI>* rightarray, std::vector<CI>& leftindex, std::vector<CI>& rightindex, CI ndimensions);}
+  namespace{template <class CT, class CI> CT RecursiveInnerProduct(const array<CT,CI>& leftarray, const array<CT,CI>& rightarray, std::vector<CI>& leftindex, std::vector<CI>& rightindex, const CI& ndimensions);}
   
   //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   template <class T> void Normalize(T* begin, T* end){
@@ -209,6 +210,7 @@ namespace CsUtil{
     std::vector<CI> newshape(leftshape.size() + rightshape.size() - 2*ndimensions);
     for (CI i = 0; i < ndimensions; ++i){
       if (leftshape[leftshape.size()-1-i] != rightshape[i]){
+	throw std::invalid_argument( "These arrays cannot undergo inner product!" );
       }
     }
 
@@ -227,20 +229,20 @@ namespace CsUtil{
       newindex = newarray->GetIndex(index);
       for (CI i = 0; i < leftshape.size()-ndimensions; ++i){leftindex[i] = newindex[i];}
       for (CI i = 0; i < rightshape.size()-ndimensions; ++i){rightindex[ndimensions+i] = newindex[newindex.size()-rightshape.size() + ndimensions+i];}
-      newarray->Assign(index, RecursiveInnerProduct(&leftarray, &rightarray, leftindex, rightindex, ndimensions));
+      newarray->Assign(index, RecursiveInnerProduct(leftarray, rightarray, leftindex, rightindex, ndimensions));
     }
 
     return newarray;
   }
 
   namespace {
-    template <class CT, class CI> CT RecursiveInnerProduct(const array<CT,CI>* leftarray, const array<CT,CI>* rightarray, std::vector<CI>& leftindex, std::vector<CI>& rightindex, CI ndimensions){
+    template <class CT, class CI> CT RecursiveInnerProduct(const array<CT,CI>& leftarray, const array<CT,CI>& rightarray, std::vector<CI>& leftindex, std::vector<CI>& rightindex, const CI& ndimensions){
       CT newvalue = 0;
       CI leftactingindex = leftindex.size()-ndimensions;
-      CI actingindexlength = leftarray->Shape(leftactingindex);
+      CI actingindexlength = leftarray.Shape(leftactingindex);
       if (ndimensions == 1){
-	CT* leftbegin = leftarray->GetValueP(leftindex), *rightbegin = rightarray->GetValueP(rightindex);
-	CI columnstep = rightarray->Size(1);
+	CT* leftbegin = leftarray.GetValueP(leftindex), *rightbegin = rightarray.GetValueP(rightindex);
+	CI columnstep = rightarray.Size(1);
 	for (CI index = 0; index < actingindexlength; ++index){
 	  newvalue += (*(leftbegin + index))*(*(rightbegin + index*columnstep));
 	}
