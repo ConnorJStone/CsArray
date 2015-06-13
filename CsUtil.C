@@ -6,6 +6,7 @@
 //#include <cstdarg.h>
 
 namespace CsUtil{
+  namespace{}
   const double PI = 3.14159265358979323;
 
   template <class T> void Normalize(T* begin, T* end);
@@ -29,7 +30,7 @@ namespace CsUtil{
   template <class T> std::vector< T > Series(const T& start, const T& end, const T& increment);
 
   template <class CT, class CI> array<CT,CI>* InnerProduct(const array<CT,CI>& leftarray, const array<CT,CI>& rightarray, CI ndimensions = 1);
-  template <class CT, class CI> CT RecursiveInnerProduct(const array<CT,CI>* leftarray, const array<CT,CI>* rightarray, std::vector<CI>& leftindex, std::vector<CI>& rightindex, CI ndimensions);
+  namespace{template <class CT, class CI> CT RecursiveInnerProduct(const array<CT,CI>* leftarray, const array<CT,CI>* rightarray, std::vector<CI>& leftindex, std::vector<CI>& rightindex, CI ndimensions);}
   
   //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   template <class T> void Normalize(T* begin, T* end){
@@ -232,26 +233,25 @@ namespace CsUtil{
     return newarray;
   }
 
-  template <class CT, class CI> CT RecursiveInnerProduct(const array<CT,CI>* leftarray, const array<CT,CI>* rightarray, std::vector<CI>& leftindex, std::vector<CI>& rightindex, CI ndimensions){
-    CT newvalue = 0;
-    CI leftactingindex = leftindex.size()-ndimensions;
-    CI actingindexlength = leftarray->Shape(leftactingindex);
-    if (ndimensions == 1){
-      //leftindex[leftactingindex] = 0;
-      //rightindex[0] = 0;
-      CT* leftbegin = leftarray->GetValueP(leftindex), *rightbegin = rightarray->GetValueP(rightindex);
-      CI columnstep = rightarray->Size(1);
-      for (CI index = 0; index < actingindexlength; ++index){
-	newvalue += (*(leftbegin + index))*(*(rightbegin + index*columnstep));
+  namespace {
+    template <class CT, class CI> CT RecursiveInnerProduct(const array<CT,CI>* leftarray, const array<CT,CI>* rightarray, std::vector<CI>& leftindex, std::vector<CI>& rightindex, CI ndimensions){
+      CT newvalue = 0;
+      CI leftactingindex = leftindex.size()-ndimensions;
+      CI actingindexlength = leftarray->Shape(leftactingindex);
+      if (ndimensions == 1){
+	CT* leftbegin = leftarray->GetValueP(leftindex), *rightbegin = rightarray->GetValueP(rightindex);
+	CI columnstep = rightarray->Size(1);
+	for (CI index = 0; index < actingindexlength; ++index){
+	  newvalue += (*(leftbegin + index))*(*(rightbegin + index*columnstep));
+	}
+      }else{
+	for (CI index = 0; index < actingindexlength; ++index){
+	  leftindex[leftactingindex] = index;
+	  rightindex[ndimensions-1] = index;
+	  newvalue += RecursiveInnerProduct(leftarray, rightarray, leftindex, rightindex, ndimensions-1);
+	}
       }
-    }else{
-      for (CI index = 0; index < actingindexlength; ++index){
-	leftindex[leftactingindex] = index;
-	rightindex[ndimensions-1] = index;
-	newvalue += RecursiveInnerProduct(leftarray, rightarray, leftindex, rightindex, ndimensions-1);
-      }
+      return newvalue;
     }
-    return newvalue;
   }
-
 }
