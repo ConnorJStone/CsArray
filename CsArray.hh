@@ -266,6 +266,7 @@ const CI array<CT, CI>::Size(const CI& dimension) const{
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
 const std::vector<CI> array<CT, CI>::Shape() const{
+  std::cout << " made it this far" << std::endl;
   return shape;
 }
 
@@ -286,7 +287,22 @@ const std::vector< std::vector<CT*> > array<CT, CI>::Axis(const CI& dimension) c
   }
   return axis;
 }
-    
+
+/**
+template <class CT, class CI>
+const array<CT*,CI>& array<CT, CI>::Axis(const CI& dimension) const{
+  std::vector<CI> shape(2);
+  shape[0] = offsets[0]/offsets[dimension];
+  shape[1] = (CI) 2;
+  array<CT*,CI>* axis(shape);
+  for (CI i = 0; i < axis.size(); ++i){
+    axis->Assign(2*i, origin + i*offsets[dimension]);
+    axis->Assign(2*i + 1, origin + (i+1)*offsets[dimension] - 1);
+  }
+  return *axis;
+}
+*/
+
 //-----------------------------------------------------------------------------
 template <class CT, class CI>
 const CT* array<CT, CI>::Begin() const{return origin;}

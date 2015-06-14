@@ -12,8 +12,11 @@ namespace CsUtil{
 
   template <class T> void Normalize(T* begin, T* end);
   template <class T> void Normalize(std::vector< T > inputvector);
-  template <class T, class I> void Normalize(array<T,I> inarray, I axis = -1);
+  template <class T, class I> void Normalize(const array<T,I>& inarray, I axis = -1);
 
+  template <class T> T Sum(T* begin, T* end);
+  template <class T, class I> array<CT,CI>* Sum(const array<CT,CI>& inarray, CI axis = -1);
+  
   void SphericalVolumePDF(std::vector< double > binedges, std::vector< double > distribution, double radius = 850.0);
 
   void Histogram(std::vector< double > x, std::vector< double > binedges, std::vector< double > h, bool normed = true);
@@ -32,10 +35,13 @@ namespace CsUtil{
 
   template <class CT, class CI> array<CT,CI>* InnerProduct(const array<CT,CI>& leftarray, const array<CT,CI>& rightarray, CI ndimensions = 1);
   namespace{template <class CT, class CI> CT RecursiveInnerProduct(const array<CT,CI>& leftarray, const array<CT,CI>& rightarray, std::vector<CI>& leftindex, std::vector<CI>& rightindex, const CI& ndimensions);}
-  
+
+  template <class CT, class CI> array<CT,CI>* MatrixInverse(const array<CT,CI>& operand);
+  template <class CT, class CI> CT MatrixDeterminant(const array<CT,CI>& operand);
+  template <class CT, class CI> array<CT,CI>* MatrixCofactor(const array<CT,CI>& operand);
   //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   template <class T> void Normalize(T* begin, T* end){
-    T sum = accumulate(begin, end, (T) 0 );
+    T sum = Sum(begin, end);
     for (unsigned int i = 0; i < end - begin + 1; ++i){
       *(begin+i) = *(begin+i)/sum;
     }
@@ -45,7 +51,7 @@ namespace CsUtil{
     Normalize(&(inputvector.front()), &(inputvector.back()));
   }
 
-  template <class T, class I> void Normalize(array<T,I> inarray, I axis = -1){
+  template <class T, class I> void Normalize(const array<T,I>& inarray, I axis = -1){
     std::vector<T*> axispointers;
     if (axis == -1){axispointers = inarray.Axis((inarray.Shape()).size()-1);}
     else{axispointers = inarray.Axis(axis);}
@@ -55,6 +61,36 @@ namespace CsUtil{
     }
   }
 
+  //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  template <class T> T Sum(T* begin, T* end){
+    T total = NULL;
+    for (T* i = begin; i <= end; ++i){
+      total += *i;
+    }
+    return total;
+  }
+
+  template <class CT, class CI> array<CT,CI>* Sum(const array<CT,CI>& inarray, CI axis){
+    std::vector<CT*> axispointers;
+    std::vector<CI> newshape, inshape = inarray.Shape();
+    if (axis == -1){axispointers = inarray.Axis(inshape().size()-1);}
+    else{axispointers = inarray.Axis(axis);}
+
+    if (inshape.size() == 1){
+      newshape.resize(1);
+      newshape[0] = 1;
+    }else{
+      newshape.resize(inshape().size()-1);
+      newshape.assign(inshape.begin(), inshape.end()-1);
+    }
+    array<CT,CI>* newarray = new array<CT,CI>(newshape);
+    
+    for (CI i = 0; i < axispointers.size(); ++i){
+      newarray->Assign(i, Sum(axispointers[i][0], axispointers[i][1]));
+    }
+    return newarray;
+  }
+  
   //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   void SphericalVolumePDF(std::vector< double > binedges, std::vector< double > distribution, double radius){
     double spherevolume = (4.0/3.0)*PI*pow(radius,3);
@@ -208,6 +244,7 @@ namespace CsUtil{
   template <class CT, class CI> array<CT,CI>* InnerProduct(const array<CT,CI>& leftarray, const array<CT,CI>& rightarray, CI ndimensions){
     const std::vector<CI> leftshape = leftarray.Shape(), rightshape = rightarray.Shape();
     std::vector<CI> newshape(leftshape.size() + rightshape.size() - 2*ndimensions);
+    
     for (CI i = 0; i < ndimensions; ++i){
       if (leftshape[leftshape.size()-1-i] != rightshape[i]){
 	throw std::invalid_argument( "These arrays cannot undergo inner product!" );
@@ -256,4 +293,18 @@ namespace CsUtil{
       return newvalue;
     }
   }
+
+  //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  template <class CT, class CI> array<CT,CI>* MatrixInverse(const array<CT,CI>& operand){
+    if (operand.Shape().size() != 2){throw std::invalid_argument( "This is not a matrix" );}
+    else if (operand.Shape()[0] != operand.Shape()[1]){throw std::invalid_argument( "This matrix is not square" );}
+
+    
+  }
+
+  //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  template <class CT, class CI> CT MatrixDeterminant(const array<CT,CI>& operand){}
+
+  //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  template <class CT, class CI> array<CT,CI>* MatrixCofactor(const array<CT,CI>& operand){}
 }
