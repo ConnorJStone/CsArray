@@ -17,23 +17,11 @@ class array {
   std::vector<INDEXTYPE> offsets;
 
   //Will not print an array if it is longer than this value
-  static const INDEXTYPE printlimit = 150;
+  INDEXTYPE printlimit;
   
   //Given the requested dimensions, it fills the shape and offsets objects, also creates the array in memory and assigns it to the origin
   void InitializeSelf(std::vector<INDEXTYPE> D);
-
-  //Instead of creating new memory, it is possible to initialize the object as a subset of another array
-  void InitializeAsReference(std::vector<INDEXTYPE> D, DATATYPE* begin);
   
-  //Given a vector of indices, this will return a new vector with the indices permuted by an amount equal to step
-  std::vector<INDEXTYPE> Permute(const std::vector<INDEXTYPE>& index, const INDEXTYPE& step) const;
-
-  //Given a index in the memory, this will return the permuted index in memory
-  INDEXTYPE Permute(const INDEXTYPE& index, const INDEXTYPE& step) const;
-
-  //Creates a vector where accessing an element returns the permuted index
-  std::vector<INDEXTYPE> GeneratePermuteMap(const INDEXTYPE& nindices, const INDEXTYPE& step) const;
-
   //used by operators to guarintee consistancy of implimentation
   inline array<DATATYPE,INDEXTYPE>& operate(const array<DATATYPE,INDEXTYPE>& operand, DATATYPE (array<DATATYPE, INDEXTYPE>::*op)(const DATATYPE&, const DATATYPE&)const) const;
   inline array<DATATYPE,INDEXTYPE>& operate(const DATATYPE& operand, DATATYPE (array<DATATYPE, INDEXTYPE>::*op)(const DATATYPE&, const DATATYPE&)const) const;
@@ -53,13 +41,22 @@ public:
   array(const std::vector<INDEXTYPE>& D);
 
   //Initializes the array and assigns a value to every position
-  array(std::vector<INDEXTYPE> D, DATATYPE value);
+  array(const std::vector<INDEXTYPE>& D, DATATYPE value);
 
   //Constructor for manual assignment of shape
   array(const INDEXTYPE& n, ...);
-  
+
+  //Constructor to interpret data which is already in memory
+  array(const std::vector<INDEXTYPE>& D, DATATYPE* begin);
+
   //Destructor, will call delete on origin
   ~array();
+
+  //Rewrite the array using the different shape, WARNING: his does not do anything fancy, it will make an array with the requested shape then write as much as it can from the old array
+  void Resize(const std::vector<INDEXTYPE>& D);
+
+  //Rewrite the array using the different shape, WARNING: his does not do anything fancy, it will make an array with the requested shape then write as much as it can from the old array. In this version you can write out the new dimensions manually.
+  void Resize(const INDEXTYPE& n, ...);
 
   //Given an index along the memory, it returns a vector which has the distances along each dimension
   std::vector<INDEXTYPE> GetIndex(const INDEXTYPE& index) const;
@@ -88,15 +85,6 @@ public:
   //Returns the length of one of the dimensions, as specified
   INDEXTYPE Shape(const INDEXTYPE& dimension) const;
 
-  //Returns the beginning and end pointer for each segment of the array according to the dimension requested 
-  std::vector< std::vector<DATATYPE*> > Axis(const INDEXTYPE& dimension) const;
-
-  //Applies a function to the elements, segmented by the axis. The function is given the begin/end pointers for the data in that segment and allowed to make changes
-  void Apply(void (*f)(DATATYPE*,DATATYPE*), INDEXTYPE axis = -1);
-
-  //Simmilar to "Apply" except the output of the function must be a DATATYPE type, the results from each function run are written to a new array. the user is not allowed to change the original data
-  array<DATATYPE,INDEXTYPE>& RunFunc(DATATYPE (*f)(DATATYPE*,DATATYPE*), INDEXTYPE axis = -1) const;
-  
   //Returns a pointer to the beginning of the array
   DATATYPE* Begin() const;
 
@@ -108,6 +96,9 @@ public:
 
   //Returns a vector of pointers to the end of each segment on a specified dimension
   std::vector<DATATYPE*> End(const INDEXTYPE& dimension) const;
+
+  //Returns the beginning and end pointer for each segment of the array according to the dimension requested 
+  std::vector< std::vector<DATATYPE*> > Axis(const INDEXTYPE& dimension) const;//array<DATATYPE*,INDEXTYPE>
 
   //Assign all the values from a vector
   void Assign(const std::vector<DATATYPE>& values);
@@ -127,17 +118,11 @@ public:
   //Assign a list of values to the array, the first argument is the number of values to assign
   void ManualAssign(const INDEXTYPE& n, ...);
 
-  void Resize(const std::vector<INDEXTYPE>& D);
-
-  void Resize(const INDEXTYPE& n, ...);
-
-  //Returns a new array which is the transpose of the old one by a given number of steps (if you are using matrices, the default is what you want)
-  array<DATATYPE,INDEXTYPE>* Transpose(INDEXTYPE step = 1) const;
+  //Use a pre-assigned contiguous block of memory as an array. WARNING: Two arrays using the same block will cause an error during destruction, it should have expected behaviour during runtime though.
+  void UseBlock(const std::vector<INDEXTYPE>& D, DATATYPE* begin);
 
   void Print() const;
 
-  //array<DATATYPE,INDEXTYPE>* TensorProduct(const array<DATATYPE,INDEXTYPE>& operand);//future
-  
   array<DATATYPE,INDEXTYPE>& operator*(const array<DATATYPE,INDEXTYPE>& operand) const;
 
   array<DATATYPE,INDEXTYPE>& operator*(const DATATYPE& operand) const;
@@ -182,7 +167,7 @@ public:
 template <class DATATYPE, class INDEXTYPE>
 void array<DATATYPE, INDEXTYPE>::InitializeSelf(std::vector<INDEXTYPE> D){
   for (INDEXTYPE i = 0; i < D.size(); ++i){
-    if (D[i] == (DATATYPE) 0){throw std::invalid_argument( "Array cannot have dimension length of 0" );}
+    if (D[i] < (INDEXTYPE) 1){throw std::invalid_argument( "Array cannot have dimension length of < 1" );}
   }
   
   if (D.size() == 0){
@@ -200,33 +185,89 @@ void array<DATATYPE, INDEXTYPE>::InitializeSelf(std::vector<INDEXTYPE> D){
       this->offsets[a] = axislength;
     }
   }
+  this->printlimit = 150;
+}
+
+//-----------------------------------------------------------------------------
+template <class DATATYPE, class INDEXTYPE>
+array<DATATYPE, INDEXTYPE>::array(){
+  std::vector<INDEXTYPE> D(1,1);
+  this->InitializeSelf(D);
   this->origin = new DATATYPE[this->offsets[0]];
 }
 
+//-----------------------------------------------------------------------------
 template <class DATATYPE, class INDEXTYPE>
-void array<DATATYPE, INDEXTYPE>::InitializeAsReference(std::vector<INDEXTYPE> D, DATATYPE* begin){
-  if (D.size() == 0){
-    this->shape.resize(1);
-    this->shape[0] = (INDEXTYPE) 1;
-    this->offsets.resize(1);
-    this->offsets[0] = (INDEXTYPE) 1;
-  }else{
-    this->shape.resize(D.size());
-    this->shape.assign(D.begin(), D.end());
-    this->offsets.resize(this->shape.size()+1);
-    for (INDEXTYPE a = 0; a < this->offsets.size(); ++a){
-      INDEXTYPE axislength = 1;
-      for (INDEXTYPE d = a; d < this->shape.size(); ++d){axislength *= this->shape[d];}
-      this->offsets[a] = axislength;
-    }
+array<DATATYPE, INDEXTYPE>::array(const std::vector<INDEXTYPE>& D){
+  this->InitializeSelf(D);
+  this->origin = new DATATYPE[this->offsets[0]];
+}
+
+//-----------------------------------------------------------------------------
+template <class DATATYPE, class INDEXTYPE>
+array<DATATYPE, INDEXTYPE>::array(const std::vector<INDEXTYPE>& D, DATATYPE value){
+  this->InitializeSelf(D);
+  this->origin = new DATATYPE[this->offsets[0]];
+  this->Assign(value);
+}
+
+template <class DATATYPE, class INDEXTYPE>
+array<DATATYPE, INDEXTYPE>::array(const INDEXTYPE& n, ...){
+  std::vector<INDEXTYPE> D(n,1);
+  va_list values;
+  va_start(values, n);
+  for (INDEXTYPE i = 0; i < n; ++i){
+    D[i] = va_arg(values, INDEXTYPE);
   }
+  InitializeSelf(D);
+  va_end(values);
+  this->origin = new DATATYPE[this->offsets[0]];
+}
+
+//-----------------------------------------------------------------------------
+template <class DATATYPE, class INDEXTYPE>
+array<DATATYPE, INDEXTYPE>::array(const std::vector<INDEXTYPE>& D, DATATYPE* begin){
+  this->InitializeSelf(D);
   this->origin = begin;
 }
 
 //-----------------------------------------------------------------------------
 template <class DATATYPE, class INDEXTYPE>
+array<DATATYPE, INDEXTYPE>::~array(){delete[] this->origin;}
+
+//-----------------------------------------------------------------------------
+template <class DATATYPE, class INDEXTYPE>
+void array<DATATYPE, INDEXTYPE>::Resize(const std::vector<INDEXTYPE>& D){
+  bool allequal = true;
+  if (D.size() != this->shape.size()){allequal = false;}
+  else{for (INDEXTYPE i = 0; i < D.size(); ++i){if (D[i] != this->shape[i]){allequal = false; break;}}}
+  
+  if (!allequal){
+    std::vector<INDEXTYPE> oldshape = this->shape, oldoffsets = this->offsets;
+    DATATYPE* oldorigin = this->origin;
+    this->InitializeSelf(D);
+    this->Assign(oldorigin, oldorigin + min(oldoffsets[0], this->offsets[0]) - 1);
+    delete[] oldorigin;
+  }
+}
+
+//-----------------------------------------------------------------------------
+template <class DATATYPE, class INDEXTYPE>
+void array<DATATYPE, INDEXTYPE>::Resize(const INDEXTYPE& n, ...){
+  std::vector<INDEXTYPE> D(n);
+  va_list values;
+  va_start(values, n);
+  for (INDEXTYPE i = 0; i < n; ++i){
+    D[i] = va_arg(values, INDEXTYPE);
+  }
+  this->Resize(D);
+  va_end(values);
+}
+ 
+//-----------------------------------------------------------------------------
+template <class DATATYPE, class INDEXTYPE>
 std::vector<INDEXTYPE> array<DATATYPE, INDEXTYPE>::GetIndex(const INDEXTYPE& index) const{
-  std::vector<INDEXTYPE> newindex(this->shape.size());
+  std::vector<INDEXTYPE> newindex(this->shape.size(), 0);
   for (INDEXTYPE i = 0; i < newindex.size(); ++i){
     newindex[i] = (index%this->offsets[i])/this->offsets[i+1];
   }
@@ -242,70 +283,6 @@ INDEXTYPE array<DATATYPE, INDEXTYPE>::GetIndex(const std::vector<INDEXTYPE>& ind
   }
   return newindex;
 }
-
-//-----------------------------------------------------------------------------
-template <class DATATYPE, class INDEXTYPE>
-std::vector<INDEXTYPE> array<DATATYPE, INDEXTYPE>::Permute(const std::vector<INDEXTYPE>& index, const INDEXTYPE& step) const{
-  std::vector<INDEXTYPE> newindex(index.size());
-  for (INDEXTYPE i = 0; i < index.size(); ++i){
-    newindex[(i+step)%index.size()] = index[i];
-  }
-  return newindex;
-}
-
-//-----------------------------------------------------------------------------
-template <class DATATYPE, class INDEXTYPE>
-INDEXTYPE array<DATATYPE, INDEXTYPE>::Permute(const INDEXTYPE& index, const INDEXTYPE& step) const{
-  return this->GetIndex(this->Permute(this->GetIndex(index), step));
-}
-
-//-----------------------------------------------------------------------------
-template <class DATATYPE, class INDEXTYPE>
-std::vector<INDEXTYPE> array<DATATYPE, INDEXTYPE>::GeneratePermuteMap(const INDEXTYPE& nindices, const INDEXTYPE& step) const{
-  std::vector<INDEXTYPE> map(nindices);
-  for (INDEXTYPE i = 0; i < nindices; ++i){
-    map[i] = (i+step)%nindices;
-  }
-  return map;
-}
-
-
-//-----------------------------------------------------------------------------
-template <class DATATYPE, class INDEXTYPE>
-array<DATATYPE, INDEXTYPE>::array(){
-  std::vector<INDEXTYPE> D(1,1);
-  this->InitializeSelf(D);
-}
-
-
-//-----------------------------------------------------------------------------
-template <class DATATYPE, class INDEXTYPE>
-array<DATATYPE, INDEXTYPE>::array(const std::vector<INDEXTYPE>& D){
-  this->InitializeSelf(D);
-}
-
-//-----------------------------------------------------------------------------
-template <class DATATYPE, class INDEXTYPE>
-array<DATATYPE, INDEXTYPE>::array(std::vector<INDEXTYPE> D, DATATYPE value){
-  this->InitializeSelf(D);
-  this->Assign(value);
-}
-
-template <class DATATYPE, class INDEXTYPE>
-array<DATATYPE, INDEXTYPE>::array(const INDEXTYPE& n, ...){
-  std::vector<INDEXTYPE> D(n);
-  va_list values;
-  va_start(values, n);
-  for (INDEXTYPE i = 0; i < n; ++i){
-    D[i] = va_arg(values, INDEXTYPE);
-  }
-  InitializeSelf(D);
-  va_end(values);
-}
-
-//-----------------------------------------------------------------------------
-template <class DATATYPE, class INDEXTYPE>
-array<DATATYPE, INDEXTYPE>::~array(){delete[] this->origin;}
 
 //-----------------------------------------------------------------------------
 template <class DATATYPE, class INDEXTYPE>
@@ -351,68 +328,6 @@ INDEXTYPE array<DATATYPE, INDEXTYPE>::Shape(const INDEXTYPE& dimension) const{
 
 //-----------------------------------------------------------------------------
 template <class DATATYPE, class INDEXTYPE>
-std::vector< std::vector<DATATYPE*> > array<DATATYPE, INDEXTYPE>::Axis(const INDEXTYPE& dimension) const{
-  std::vector< std::vector<DATATYPE*> > axis(this->offsets[0]/this->offsets[dimension]);
-  for (INDEXTYPE i = 0; i < axis.size(); ++i){
-    axis[i].resize(2);
-    axis[i][0] = this->origin + i*this->offsets[dimension];
-    axis[i][1] = this->origin + (i+1)*this->offsets[dimension] - 1;
-  }
-  return axis;
-}
-
-///**
-template <class DATATYPE, class INDEXTYPE>
-void array<DATATYPE,INDEXTYPE>::Apply(void (*f)(DATATYPE*,DATATYPE*), INDEXTYPE axis){
-  std::vector< std::vector<DATATYPE*> > axispointers;
-  if (axis == -1){axispointers = this->Axis(this->shape.size()-1);}
-  else{axispointers = this->Axis(axis);}
-  
-  for (INDEXTYPE i = 0; i < axispointers.size(); ++i){
-    (*f)(axispointers[i][0], axispointers[i][1]);
-  }
-}
-
-template <class DATATYPE, class INDEXTYPE>
-array<DATATYPE,INDEXTYPE>& array<DATATYPE,INDEXTYPE>::RunFunc(DATATYPE (*f)(DATATYPE*,DATATYPE*), INDEXTYPE axis) const{
-  std::vector< std::vector<DATATYPE*> > axispointers;
-  std::vector<INDEXTYPE> newshape;
-  if (axis == -1){axispointers = this->Axis(this->shape.size()-1);}
-  else{axispointers = this->Axis(axis);}
-
-  //fixme, it should work for all axes values
-  if (this->shape.size() == 1){
-    newshape.resize(1);
-    newshape[0] = 1;
-  }else{
-    newshape.resize(this->shape.size()-1);
-    newshape.assign(this->shape.begin(), this->shape.end()-1);
-  }
-  array<DATATYPE,INDEXTYPE>* newarray = new array<DATATYPE,INDEXTYPE>(newshape);
-  
-  for (INDEXTYPE i = 0; i < axispointers.size(); ++i){
-    newarray->Assign(i, (*f)(axispointers[i][0], axispointers[i][1]));
-  }
-  return *newarray;
-}
-//*/
-/**
-template <class DATATYPE, class INDEXTYPE>
-const array<DATATYPE*,INDEXTYPE>& array<DATATYPE, INDEXTYPE>::Axis(const INDEXTYPE& dimension) const{
-  std::vector<INDEXTYPE> axisshape(2);
-  axisshape[0] = this->offsets[0]/this->offsets[dimension];
-  axisshape[1] = (INDEXTYPE) 2;
-  array<DATATYPE*,INDEXTYPE>* axis = new array<DATATYPE,INDEXTYPE>(axisshape);
-  for (INDEXTYPE i = 0; i < axis.size(); ++i){
-    axis->Assign(2*i, this->origin + i*this->offsets[dimension]);
-    axis->Assign(2*i + 1, this->origin + (i+1)*this->offsets[dimension] - 1);
-  }
-  return *axis;
-}
-*/
-
-//-----------------------------------------------------------------------------
-template <class DATATYPE, class INDEXTYPE>
 DATATYPE* array<DATATYPE, INDEXTYPE>::Begin() const{return this->origin;}
 
 //-----------------------------------------------------------------------------
@@ -424,7 +339,6 @@ std::vector<DATATYPE*> array<DATATYPE, INDEXTYPE>::Begin(const INDEXTYPE& dimens
   }
   return beginnings;
 }
-    
 
 //-----------------------------------------------------------------------------
 template <class DATATYPE, class INDEXTYPE>
@@ -440,6 +354,29 @@ std::vector<DATATYPE*> array<DATATYPE, INDEXTYPE>::End(const INDEXTYPE& dimensio
   return endings;
 }
 
+//-----------------------------------------------------------------------------
+template <class DATATYPE, class INDEXTYPE>
+std::vector< std::vector<DATATYPE*> > array<DATATYPE, INDEXTYPE>::Axis(const INDEXTYPE& dimension) const{
+  std::vector< std::vector<DATATYPE*> > axis(this->offsets[0]/this->offsets[dimension]);
+  for (INDEXTYPE i = 0; i < axis.size(); ++i){
+    axis[i].resize(2);
+    axis[i][0] = this->origin + i*this->offsets[dimension];
+    axis[i][1] = this->origin + (i+1)*this->offsets[dimension] - 1;
+  }
+  return axis;
+}
+/**
+//-----------------------------------------------------------------------------
+template <class DATATYPE, class INDEXTYPE>
+array<DATATYPE*, INDEXTYPE> array<DATATYPE, INDEXTYPE>::Axis(const INDEXTYPE& dimension) const{
+  array<DATATYPE*, INDEXTYPE> axis(2,this->offsets[0]/this->offsets[dimension], 2);
+  for (INDEXTYPE i = 0; i < axis.Shape(0); ++i){
+    axis[2*i] = this->origin + i*this->offsets[dimension];
+    axis[2*i+1] = this->origin + (i+1)*this->offsets[dimension] - 1;
+  }
+  return axis;
+}
+*/
 //-----------------------------------------------------------------------------
 template <class DATATYPE, class INDEXTYPE>
 void array<DATATYPE, INDEXTYPE>::Assign(const std::vector<DATATYPE>& values){
@@ -489,55 +426,26 @@ void array<DATATYPE, INDEXTYPE>::ManualAssign(const INDEXTYPE& n, ...){
 
 //-----------------------------------------------------------------------------
 template <class DATATYPE, class INDEXTYPE>
-void array<DATATYPE, INDEXTYPE>::Resize(const std::vector<INDEXTYPE>& D){
-  bool allequal = true;
-  if (D.size() != this->shape.size()){allequal = false;}
-  else{for (INDEXTYPE i = 0; i < D.size(); ++i){if (D[i] != this->shape[i]){allequal = false; break;}}}
-  
-  if (!allequal){
-    std::vector<INDEXTYPE> oldshape = this->shape, oldoffsets = this->offsets;
-    DATATYPE* oldorigin = this->origin;
+void array<DATATYPE, INDEXTYPE>::UseBlock(const std::vector<INDEXTYPE>& D, DATATYPE* begin){
+  if ( this->Begin() <=  begin && begin <= this->End() ){std::invalid_argument( " Cannot use self as memory block " );}
+  else{
+    delete[] this->origin;
     this->InitializeSelf(D);
-    this->Assign(oldorigin, oldorigin + min(oldoffsets[0], this->offsets[0]) - 1);
-    delete[] oldorigin;
+    this->origin = begin;
   }
-}
-
-//-----------------------------------------------------------------------------
-template <class DATATYPE, class INDEXTYPE>
-void array<DATATYPE, INDEXTYPE>::Resize(const INDEXTYPE& n, ...){
-  std::vector<INDEXTYPE> D(n);
-  va_list values;
-  va_start(values, n);
-  for (INDEXTYPE i = 0; i < n; ++i){
-    D[i] = va_arg(values, INDEXTYPE);
-  }
-  InitializeSelf(D);
-  va_end(values);
-}
-    
-//-----------------------------------------------------------------------------
-template <class DATATYPE, class INDEXTYPE>
-array<DATATYPE,INDEXTYPE>* array<DATATYPE, INDEXTYPE>::Transpose(INDEXTYPE step) const{
-  array<DATATYPE,INDEXTYPE>* newarray = new array<DATATYPE,INDEXTYPE>(this->Permute(this->shape, step));
-  for (INDEXTYPE i = 0; i < this->offsets[0]; ++i){
-    newarray->Assign(this->Permute(i,step), this->GetValue(i));
-  }
-  return newarray;
 }
 
 //-----------------------------------------------------------------------------
 template <class DATATYPE, class INDEXTYPE>
 void array<DATATYPE, INDEXTYPE>::Print() const{
-  if (this->offsets[0] > printlimit && printlimit >= 0){std::cout<<"array too long: " << this->offsets[0] << " elements" << std::endl; return;}
+  if (this->offsets[0] > printlimit){std::cout<<"array too long: " << this->offsets[0] << " elements" << std::endl; return;}
   
-  bool comma = true;
   for (INDEXTYPE i = 0; i < this->offsets[0]; ++i){
-    comma = true;
+    bool comma = true;
     for (INDEXTYPE dim = 0; dim < this->offsets.size()-1; ++dim){
       if (i%this->offsets[dim] == 0){std::cout << "|";comma = false;}
     }
-    if (i != 0 && comma){std::cout << ", ";}
+    if (comma){std::cout << ", ";}
     std::cout << this->GetValue(i);
   }
   for (INDEXTYPE dim = 0; dim < this->offsets.size()-1; ++dim){std::cout << "|";}
@@ -649,9 +557,7 @@ array<DATATYPE,INDEXTYPE>& array<DATATYPE, INDEXTYPE>::operator()(const INDEXTYP
   }else{
     throw std::invalid_argument( "Cannot construct sub-array from 1D array, (Perhaps you want to use element access [] operator?)" );
   }
-  
-  array<DATATYPE,INDEXTYPE>* newarray = new array();
-  newarray->InitializeAsReference(newshape, origin + index*offsets[1]);
+  array<DATATYPE,INDEXTYPE>* newarray = new array<DATATYPE,INDEXTYPE>(newshape, origin + index*offsets[1]);
   return *newarray;
 }
 
@@ -668,6 +574,7 @@ array<DATATYPE,INDEXTYPE>& array<DATATYPE, INDEXTYPE>::operator=(const array<DAT
   if (this != &operand){
     delete[] this->origin;
     this->InitializeSelf(operand.Shape());
+    this->origin = new DATATYPE[this->offsets[0]];
     this->Assign(operand.Begin(), operand.End());
   }
   return *this;
